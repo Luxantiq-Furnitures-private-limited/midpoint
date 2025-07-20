@@ -2083,8 +2083,11 @@
                     </configuration>
                 </plugin>
                 <plugin>
-                    <artifactId>maven-assembly-plugin</artifactId>
-                    <version>3.6.0</version>
+                     <artifactId>maven-assembly-plugin</artifactId>
+                     <version>3.6.0</version>
+                     <configuration>
+                     <tarLongFileMode>posix</tarLongFileMode>
+                     </configuration>
                 </plugin>
                 <plugin>
                     <groupId>pl.project13.maven</groupId>
