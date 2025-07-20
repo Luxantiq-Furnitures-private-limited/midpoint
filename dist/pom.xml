@@ -88,25 +88,25 @@
                 </executions>
             </plugin>
             <plugin>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <inherited>false</inherited>
-                <configuration>
-                    <descriptors>
-                        <descriptor>src/main/assembly/dist.xml</descriptor>
-                    </descriptors>
-                    <finalName>midpoint-${project.version}</finalName>
-                    <tarLongFileMode>gnu</tarLongFileMode>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>dist-assembly</id>
-                        <phase>package</phase> <!-- bind to the packaging phase -->
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+               <artifactId>maven-assembly-plugin</artifactId>
+               <inherited>false</inherited>
+               <configuration>
+              <descriptors>
+             <descriptor>src/main/assembly/dist.xml</descriptor>
+            </descriptors>
+           <finalName>midpoint-${project.version}</finalName>
+           <tarLongFileMode>posix</tarLongFileMode>
+        </configuration>
+        <executions>
+         <execution>
+             <id>dist-assembly</id>
+             <phase>package</phase>
+           <goals>
+              <goal>single</goal>
+           </goals>
+          </execution>
+            </executions>
+          </plugin>
             <plugin>
                 <groupId>org.cyclonedx</groupId>
                 <artifactId>cyclonedx-maven-plugin</artifactId>
