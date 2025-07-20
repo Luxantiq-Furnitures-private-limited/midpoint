@@ -30,7 +30,7 @@
 
 -- just in case CURRENT_USER schema was dropped (fastest way to remove all midpoint objects)
 -- drop schema current_user cascade;
-CREATE SCHEMA IF NOT EXISTS AUTHORIZATION CURRENT_USER;
+CREATE SCHEMA IF NOT EXISTS AUTHORIZATION midpoint;
 
 CREATE EXTENSION IF NOT EXISTS intarray; -- support for indexing INTEGER[] columns
 CREATE EXTENSION IF NOT EXISTS pg_trgm; -- support for trigram indexes
