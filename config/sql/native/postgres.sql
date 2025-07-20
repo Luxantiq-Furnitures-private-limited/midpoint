@@ -195,54 +195,50 @@ END
 $$;
 
 -- "OID pool", provides generated OID, can be referenced by FKs.
-CREATE TABLE m_object_oid (
+CREATE TABLE midpoint.m_object_oid (
     oid UUID PRIMARY KEY DEFAULT gen_random_uuid()
 );
 -- endregion
 
 -- region Functions/triggers
 -- BEFORE INSERT trigger - must be declared on all concrete m_object sub-tables.
-CREATE OR REPLACE FUNCTION insert_object_oid()
+CREATE OR REPLACE FUNCTION midpoint.insert_object_oid()
     RETURNS trigger
     LANGUAGE plpgsql
 AS $$
 BEGIN
     IF NEW.oid IS NOT NULL THEN
-        INSERT INTO m_object_oid VALUES (NEW.oid);
+        INSERT INTO midpoint.m_object_oid VALUES (NEW.oid);
     ELSE
-        INSERT INTO m_object_oid DEFAULT VALUES RETURNING oid INTO NEW.oid;
+        INSERT INTO midpoint.m_object_oid DEFAULT VALUES RETURNING oid INTO NEW.oid;
     END IF;
-    -- before trigger must return NEW row to do something
     RETURN NEW;
 END
 $$;
 
 -- AFTER DELETE trigger - must be declared on all concrete m_object sub-tables.
-CREATE OR REPLACE FUNCTION delete_object_oid()
+CREATE OR REPLACE FUNCTION midpoint.delete_object_oid()
     RETURNS trigger
     LANGUAGE plpgsql
 AS $$
 BEGIN
-    delete from m_object_oid where oid = OLD.oid;
-    -- after trigger returns null
+    DELETE FROM midpoint.m_object_oid WHERE oid = OLD.oid;
     RETURN NULL;
 END
 $$;
 
 -- BEFORE UPDATE trigger - must be declared on all concrete m_object sub-tables.
 -- Checks that OID is not changed and updates db_modified column.
-CREATE OR REPLACE FUNCTION before_update_object()
+CREATE OR REPLACE FUNCTION midpoint.before_update_object()
     RETURNS trigger
     LANGUAGE plpgsql
 AS $$
 BEGIN
     IF NEW.oid = OLD.oid THEN
         NEW.db_modified = current_timestamp;
-        -- must return NEW, NULL would skip the update
         RETURN NEW;
     END IF;
 
-    -- OID changed, forbidden
     RAISE EXCEPTION 'UPDATE on "%" tried to change OID "%" to "%". OID is immutable and cannot be changed.',
         TG_TABLE_NAME, OLD.oid, NEW.oid;
 END
@@ -250,41 +246,27 @@ $$;
 -- endregion
 
 -- region Enumeration/code/management tables
+
 -- Key -> value config table for internal use.
-CREATE TABLE m_global_metadata (
+CREATE TABLE midpoint.m_global_metadata (
     name TEXT PRIMARY KEY,
     value TEXT
 );
 
 -- Catalog of often used URIs, typically channels and relation Q-names.
--- Never update values of "uri" manually to change URI for some objects
--- (unless you really want to migrate old URI to a new one).
--- URI can be anything, for QNames the format is based on QNameUtil ("prefix-url#localPart").
-CREATE TABLE m_uri (
+CREATE TABLE midpoint.m_uri (
     id SERIAL NOT NULL PRIMARY KEY,
     uri TEXT NOT NULL UNIQUE
 );
 
--- There can be more constants pre-filled, but that adds overhead, let the first-start do it.
--- Nothing in the application code should rely on anything inserted here, not even for 0=default.
--- Pinning 0 to default relation is merely for convenience when reading the DB tables.
-INSERT INTO m_uri (id, uri)
+-- Pre-fill default URI
+INSERT INTO midpoint.m_uri (id, uri)
     VALUES (0, 'http://midpoint.evolveum.com/xml/ns/public/common/org-3#default');
--- endregion
+------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
--- region for abstract tables m_object/container/reference
--- Purely abstract table (no entries are allowed). Represents ObjectType+ArchetypeHolderType.
--- See https://docs.evolveum.com/midpoint/architecture/archive/data-model/midpoint-common-schema/objecttype/
--- Following is recommended for each concrete table (see m_resource for example):
--- 1) override OID like this (PK+FK): oid UUID NOT NULL PRIMARY KEY REFERENCES m_object_oid(oid),
--- 2) define object type class (change value as needed):
---   objectType ObjectType GENERATED ALWAYS AS ('XY') STORED CHECK (objectType = 'XY'),
---   The CHECK part helps with query optimization when the column is uses in WHERE.
--- 3) add three triggers <table_name>_oid_{insert|update|delete}_tr
--- 4) add indexes for nameOrig and nameNorm columns (nameNorm as unique)
--- 5) the rest varies on the concrete table, other indexes or constraints, etc.
--- 6) any required FK must be created on the concrete table, even for inherited columns
-CREATE TABLE m_object (
+
+CREATE TABLE midpoint.m_object (
     -- Default OID value is covered by INSERT triggers. No PK defined on abstract tables.
     oid UUID NOT NULL,
     -- objectType will be overridden with GENERATED value in concrete table
@@ -341,171 +323,125 @@ CREATE TABLE m_object (
     CHECK (FALSE) NO INHERIT
 );
 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+-- Detect PG version for conditional column generation
+DO $$
+DECLARE
+  pg16 INT;
+BEGIN
+  SELECT 1 INTO pg16 FROM "pg_settings" WHERE "name" = 'server_version_num' AND "setting" >= '160000';
 
+  IF pg16 THEN
+    ALTER TABLE midpoint.m_object ADD COLUMN objectType ObjectType
+      GENERATED ALWAYS AS ('OBJECT') STORED NOT NULL CHECK (objectType = 'OBJECT') NO INHERIT;
+  ELSE
+    ALTER TABLE midpoint.m_object ADD COLUMN objectType ObjectType
+      NOT NULL CHECK (objectType = 'OBJECT') NO INHERIT;
+  END IF;
+END
+$$;
 
--- Important objectType column needs to be non-generated on PG < 16 and generated on PG>=16
---
--- Before Postgres 16: if parent column was generated, child columns must use same value
--- After 16: Parent must be generated, if children are generated, they may have different generation values
-do $$
-declare
-  pg16 int;
-begin
-
--- Are we on Posgres 16 or newer? we cannot use VERSION() since it returns formated string
-SELECT 1 FROM "pg_settings" into pg16 WHERE "name" = 'server_version_num' AND "setting" >= '160000';
-  if pg16 then
-       ALTER TABLE m_object ADD COLUMN objectType ObjectType GENERATED ALWAYS AS ('OBJECT') STORED NOT NULL CHECK (objectType = 'OBJECT') NO INHERIT;
-    else
-       -- PG 15 and lower
-       ALTER TABLE m_object ADD COLUMN objectType ObjectType NOT NULL CHECK (objectType = 'OBJECT') NO INHERIT;
-  end if;
-end $$;
-
-
-
-
--- No indexes here, always add indexes and referential constraints on concrete sub-tables.
-
--- Represents AssignmentHolderType (all objects except shadows)
--- extending m_object, but still abstract, hence the CHECK (false)
-CREATE TABLE m_assignment_holder (
-    -- objectType will be overridden with GENERATED value in concrete table
+-- AssignmentHolderType (abstract)
+CREATE TABLE midpoint.m_assignment_holder (
     objectType ObjectType NOT NULL CHECK (objectType = 'ASSIGNMENT_HOLDER') NO INHERIT,
-
     CHECK (FALSE) NO INHERIT
 )
-    INHERITS (m_object);
+INHERITS (midpoint.m_object);
 
--- Purely abstract table (no entries are allowed). Represents Containerable/PrismContainerValue.
--- Allows querying all separately persisted containers, but not necessary for the application.
-CREATE TABLE m_container (
-    -- Default OID value is covered by INSERT triggers. No PK defined on abstract tables.
-    -- Owner does not have to be the direct parent of the container.
+-- Abstract container table
+CREATE TABLE midpoint.m_container (
     ownerOid UUID NOT NULL,
-    -- use like this on the concrete table:
-    -- ownerOid UUID NOT NULL REFERENCES m_object_oid(oid),
-
-    -- Container ID, unique in the scope of the whole object (owner).
-    -- While this provides it for sub-tables we will repeat this for clarity, it's part of PK.
     cid BIGINT NOT NULL,
-    -- containerType will be overridden with GENERATED value in concrete table
-    -- containerType will be added by ALTER because we need different definition between PG Versions
-    -- containerType ContainerType NOT NULL,
-
     CHECK (FALSE) NO INHERIT
-    -- add on concrete table (additional columns possible): PRIMARY KEY (ownerOid, cid)
 );
--- Abstract reference table, for object but also other container references.
-CREATE TABLE m_reference (
-    ownerOid UUID NOT NULL REFERENCES m_object_oid(oid) ON DELETE CASCADE,
+
+-- Abstract reference table
+CREATE TABLE midpoint.m_reference (
+    ownerOid UUID NOT NULL REFERENCES midpoint.m_object_oid(oid) ON DELETE CASCADE,
     ownerType ObjectType NOT NULL,
-    -- referenceType will be overridden with GENERATED value in concrete table
-    -- referenceType will be added by ALTER because we need different definition between PG Versions
-
-    targetOid UUID NOT NULL, -- soft-references m_object
+    targetOid UUID NOT NULL,
     targetType ObjectType NOT NULL,
-    relationId INTEGER NOT NULL REFERENCES m_uri(id),
-
-    -- prevents inserts to this table, but not to inherited ones; this makes it "abstract" table
+    relationId INTEGER NOT NULL REFERENCES midpoint.m_uri(id),
     CHECK (FALSE) NO INHERIT
-    -- add PK (referenceType is the same per table): PRIMARY KEY (ownerOid, relationId, targetOid)
 );
 
--- Important: referenceType, containerType column needs to be non-generated on PG < 16 and generated on PG>=16
---
--- Before Postgres 16: if parent column was generated, child columns must use same value
--- After 16: Parent must be generated, if children are generated, they may have different generation values
-do $$
-declare
-  pg16 int;
-begin
+-- Add containerType and referenceType columns depending on PG version
+DO $$
+DECLARE
+  pg16 INT;
+BEGIN
+  SELECT 1 INTO pg16 FROM "pg_settings" WHERE "name" = 'server_version_num' AND "setting" >= '160000';
 
--- Are we on Postgres 16 or newer? we cannot use VERSION() since it returns formated string
-SELECT 1 FROM "pg_settings" into pg16 WHERE "name" = 'server_version_num' AND "setting" >= '160000';
-  if pg16 then
-       ALTER TABLE m_reference ADD COLUMN referenceType ReferenceType  GENERATED ALWAYS AS (NULL) STORED NOT NULL;
-       ALTER TABLE m_container ADD COLUMN containerType ContainerType  GENERATED ALWAYS AS (NULL) STORED NOT NULL;
-    else
-       -- PG 15 and lower
-       ALTER TABLE m_reference ADD COLUMN referenceType ReferenceType NOT NULL;
-       ALTER TABLE m_container ADD COLUMN containerType ContainerType NOT NULL;
-  end if;
-end $$;
+  IF pg16 THEN
+    ALTER TABLE midpoint.m_reference ADD COLUMN referenceType ReferenceType GENERATED ALWAYS AS (NULL) STORED NOT NULL;
+    ALTER TABLE midpoint.m_container ADD COLUMN containerType ContainerType GENERATED ALWAYS AS (NULL) STORED NOT NULL;
+  ELSE
+    ALTER TABLE midpoint.m_reference ADD COLUMN referenceType ReferenceType NOT NULL;
+    ALTER TABLE midpoint.m_container ADD COLUMN containerType ContainerType NOT NULL;
+  END IF;
+END
+$$;
 
--- Add this index for each sub-table (reference type is not necessary, each sub-table has just one).
--- CREATE INDEX m_reference_targetOidRelationId_idx ON m_reference (targetOid, relationId);
+-- Reference sub-tables
 
-
--- references related to ObjectType and AssignmentHolderType
--- stores AssignmentHolderType/archetypeRef
-CREATE TABLE m_ref_archetype (
-    ownerOid UUID NOT NULL REFERENCES m_object_oid(oid) ON DELETE CASCADE,
-    referenceType ReferenceType GENERATED ALWAYS AS ('ARCHETYPE') STORED
-        CHECK (referenceType = 'ARCHETYPE'),
-
+CREATE TABLE midpoint.m_ref_archetype (
+    ownerOid UUID NOT NULL REFERENCES midpoint.m_object_oid(oid) ON DELETE CASCADE,
+    referenceType ReferenceType GENERATED ALWAYS AS ('ARCHETYPE') STORED CHECK (referenceType = 'ARCHETYPE'),
     PRIMARY KEY (ownerOid, relationId, targetOid)
 )
-    INHERITS (m_reference);
+INHERITS (midpoint.m_reference);
 
 CREATE INDEX m_ref_archetype_targetOidRelationId_idx
-    ON m_ref_archetype (targetOid, relationId);
+  ON midpoint.m_ref_archetype (targetOid, relationId);
 
--- stores AssignmentHolderType/delegatedRef
-CREATE TABLE m_ref_delegated (
-    ownerOid UUID NOT NULL REFERENCES m_object_oid(oid) ON DELETE CASCADE,
-    referenceType ReferenceType GENERATED ALWAYS AS ('DELEGATED') STORED
-        CHECK (referenceType = 'DELEGATED'),
 
+CREATE TABLE midpoint.m_ref_delegated (
+    ownerOid UUID NOT NULL REFERENCES midpoint.m_object_oid(oid) ON DELETE CASCADE,
+    referenceType ReferenceType GENERATED ALWAYS AS ('DELEGATED') STORED CHECK (referenceType = 'DELEGATED'),
     PRIMARY KEY (ownerOid, relationId, targetOid)
 )
-    INHERITS (m_reference);
+INHERITS (midpoint.m_reference);
 
 CREATE INDEX m_ref_delegated_targetOidRelationId_idx
-    ON m_ref_delegated (targetOid, relationId);
+  ON midpoint.m_ref_delegated (targetOid, relationId);
 
--- stores ObjectType/metadata/createApproverRef
-CREATE TABLE m_ref_object_create_approver (
-    ownerOid UUID NOT NULL REFERENCES m_object_oid(oid) ON DELETE CASCADE,
-    referenceType ReferenceType GENERATED ALWAYS AS ('OBJECT_CREATE_APPROVER') STORED
-        CHECK (referenceType = 'OBJECT_CREATE_APPROVER'),
 
+CREATE TABLE midpoint.m_ref_object_create_approver (
+    ownerOid UUID NOT NULL REFERENCES midpoint.m_object_oid(oid) ON DELETE CASCADE,
+    referenceType ReferenceType GENERATED ALWAYS AS ('OBJECT_CREATE_APPROVER') STORED CHECK (referenceType = 'OBJECT_CREATE_APPROVER'),
     PRIMARY KEY (ownerOid, relationId, targetOid)
 )
-    INHERITS (m_reference);
+INHERITS (midpoint.m_reference);
 
 CREATE INDEX m_ref_object_create_approver_targetOidRelationId_idx
-    ON m_ref_object_create_approver (targetOid, relationId);
+  ON midpoint.m_ref_object_create_approver (targetOid, relationId);
 
 
--- stores ObjectType/effectiveMarkRef
-CREATE TABLE m_ref_object_effective_mark (
-    ownerOid UUID NOT NULL REFERENCES m_object_oid(oid) ON DELETE CASCADE,
-    referenceType ReferenceType GENERATED ALWAYS AS ('OBJECT_EFFECTIVE_MARK') STORED
-        CHECK (referenceType = 'OBJECT_EFFECTIVE_MARK'),
-
+CREATE TABLE midpoint.m_ref_object_effective_mark (
+    ownerOid UUID NOT NULL REFERENCES midpoint.m_object_oid(oid) ON DELETE CASCADE,
+    referenceType ReferenceType GENERATED ALWAYS AS ('OBJECT_EFFECTIVE_MARK') STORED CHECK (referenceType = 'OBJECT_EFFECTIVE_MARK'),
     PRIMARY KEY (ownerOid, relationId, targetOid)
 )
-    INHERITS (m_reference);
+INHERITS (midpoint.m_reference);
 
 CREATE INDEX m_ref_object_effective_mark_targetOidRelationId_idx
-    ON m_ref_object_effective_mark (targetOid, relationId);
+  ON midpoint.m_ref_object_effective_mark (targetOid, relationId);
 
 
--- stores ObjectType/metadata/modifyApproverRef
-CREATE TABLE m_ref_object_modify_approver (
-    ownerOid UUID NOT NULL REFERENCES m_object_oid(oid) ON DELETE CASCADE,
-    referenceType ReferenceType GENERATED ALWAYS AS ('OBJECT_MODIFY_APPROVER') STORED
-        CHECK (referenceType = 'OBJECT_MODIFY_APPROVER'),
-
+CREATE TABLE midpoint.m_ref_object_modify_approver (
+    ownerOid UUID NOT NULL REFERENCES midpoint.m_object_oid(oid) ON DELETE CASCADE,
+    referenceType ReferenceType GENERATED ALWAYS AS ('OBJECT_MODIFY_APPROVER') STORED CHECK (referenceType = 'OBJECT_MODIFY_APPROVER'),
     PRIMARY KEY (ownerOid, relationId, targetOid)
 )
-    INHERITS (m_reference);
+INHERITS (midpoint.m_reference);
 
 CREATE INDEX m_ref_object_modify_approver_targetOidRelationId_idx
-    ON m_ref_object_modify_approver (targetOid, relationId);
+  ON midpoint.m_ref_object_modify_approver (targetOid, relationId);
 
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------done 
 -- stores AssignmentHolderType/roleMembershipRef
 CREATE TABLE m_ref_role_membership (
     ownerOid UUID NOT NULL REFERENCES m_object_oid(oid) ON DELETE CASCADE,
@@ -524,6 +460,9 @@ CREATE INDEX m_ref_role_membership_targetOidRelationId_idx
 -- region FOCUS related tables
 -- Represents FocusType (Users, Roles, ...), see https://docs.evolveum.com/midpoint/reference/schema/focus-and-projections/
 -- extending m_object, but still abstract, hence the CHECK (false)
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 CREATE TABLE m_focus (
     -- objectType will be overridden with GENERATED value in concrete table
     objectType ObjectType NOT NULL CHECK (objectType = 'FOCUS') NO INHERIT,
