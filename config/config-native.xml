@@ -6,28 +6,6 @@
   ~ and European Union Public License. See LICENSE file for details.
   -->
 
-<!--
-Example config.xml for Native PG repository.
-To use it:
-1. Copy it to $MIDPOINT_HOME, e.g. under midpoint.../var directory in the extracted archive.
-2. Rename the copied file in $MIDPOINT_HOME to config.xml.
-3. Check DB connection parameters and change them as needed.
-4. Start midPoint (bin/start.sh) and observe the success in $MIDPOINT_HOME/log/midpoint.log.
-
-For more info see:
-
-* midPoint home:
-https://docs.evolveum.com/midpoint/reference/deployment/midpoint-home-directory/
-
-* Overriding config.xml parameters from command line:
-https://docs.evolveum.com/midpoint/reference/deployment/midpoint-home-directory/overriding-config-xml-parameters/
-
-* Repository configuration:
-https://docs.evolveum.com/midpoint/reference/repository/configuration/
-
-* Canonical config.xml auto-created if not present in $MIDPOINT_HOME (master branch):
-https://github.com/Evolveum/midpoint/blob/master/repo/system-init/src/main/resources/config.xml
--->
 <configuration>
     <midpoint>
         <webApplication>
@@ -35,9 +13,9 @@ https://github.com/Evolveum/midpoint/blob/master/repo/system-init/src/main/resou
         </webApplication>
         <repository>
             <type>native</type>
-            <jdbcUrl>jdbc:postgresql://localhost:5432/midpoint</jdbcUrl>
+            <jdbcUrl>jdbc:postgresql://10.192.136.5:5432/dev_luxantiq</jdbcUrl>
             <jdbcUsername>midpoint</jdbcUsername>
-            <jdbcPassword>password</jdbcPassword>
+            <jdbcPassword>123456</jdbcPassword>
         </repository>
         <audit>
             <auditService>
