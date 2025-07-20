@@ -1039,6 +1039,9 @@ CREATE TRIGGER m_shadow_update_tr BEFORE UPDATE ON m_shadow
 CREATE TRIGGER m_shadow_oid_delete_tr AFTER DELETE ON m_shadow
     FOR EACH ROW EXECUTE FUNCTION delete_object_oid();
 
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 
 CREATE TABLE m_shadow_default PARTITION OF m_shadow DEFAULT;
 ALTER TABLE m_shadow_default ADD PRIMARY KEY (oid);
