@@ -465,22 +465,20 @@ CREATE INDEX m_ref_role_membership_targetOidRelationId_idx
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- FOCUS Type (abstract table)
 CREATE TABLE midpoint.m_focus (
-    -- objectType will be overridden with GENERATED value in concrete table
     objectType ObjectType NOT NULL CHECK (objectType = 'FOCUS') NO INHERIT,
     costCenter TEXT,
     emailAddress TEXT,
-    photo BYTEA, -- will be TOAST-ed if necessary
+    photo BYTEA,
     locale TEXT,
     localityOrig TEXT,
     localityNorm TEXT,
     preferredLanguage TEXT,
     telephoneNumber TEXT,
     timezone TEXT,
-    -- credential/password/metadata
     passwordCreateTimestamp TIMESTAMPTZ,
     passwordModifyTimestamp TIMESTAMPTZ,
-    -- activation
     administrativeStatus ActivationStatusType,
     effectiveStatus ActivationStatusType,
     enableTimestamp TIMESTAMPTZ,
@@ -496,74 +494,93 @@ CREATE TABLE midpoint.m_focus (
 
     CHECK (FALSE) NO INHERIT
 )
-    INHERITS (m_assignment_holder);
-
--- for each concrete sub-table indexes must be added, validFrom, validTo, etc.
+    INHERITS (midpoint.m_assignment_holder);
 
 -- stores FocusType/personaRef
 CREATE TABLE midpoint.m_ref_persona (
-    ownerOid UUID NOT NULL REFERENCES m_object_oid(oid) ON DELETE CASCADE,
+    ownerOid UUID NOT NULL REFERENCES midpoint.m_object_oid(oid) ON DELETE CASCADE,
     referenceType ReferenceType GENERATED ALWAYS AS ('PERSONA') STORED
         CHECK (referenceType = 'PERSONA'),
-
     PRIMARY KEY (ownerOid, relationId, targetOid)
 )
-    INHERITS (m_reference);
+    INHERITS (midpoint.m_reference);
 
 CREATE INDEX midpoint.m_ref_persona_targetOidRelationId_idx
-    ON m_ref_persona (targetOid, relationId);
+    ON midpoint.m_ref_persona (targetOid, relationId);
 
 -- stores FocusType/linkRef ("projection" is newer and better term)
 CREATE TABLE midpoint.m_ref_projection (
-    ownerOid UUID NOT NULL REFERENCES m_object_oid(oid) ON DELETE CASCADE,
+    ownerOid UUID NOT NULL REFERENCES midpoint.m_object_oid(oid) ON DELETE CASCADE,
     referenceType ReferenceType GENERATED ALWAYS AS ('PROJECTION') STORED
         CHECK (referenceType = 'PROJECTION'),
     fullObject BYTEA,
     PRIMARY KEY (ownerOid, relationId, targetOid)
 )
-    INHERITS (m_reference);
+    INHERITS (midpoint.m_reference);
 
 CREATE INDEX midpoint.m_ref_projection_targetOidRelationId_idx
-    ON m_ref_projection (targetOid, relationId);
+    ON midpoint.m_ref_projection (targetOid, relationId);
 
+-- FOCUS identity container
 CREATE TABLE midpoint.m_focus_identity (
-    ownerOid UUID NOT NULL REFERENCES m_object_oid(oid) ON DELETE CASCADE,
+    ownerOid UUID NOT NULL REFERENCES midpoint.m_object_oid(oid) ON DELETE CASCADE,
     containerType ContainerType GENERATED ALWAYS AS ('FOCUS_IDENTITY') STORED
         CHECK (containerType = 'FOCUS_IDENTITY'),
     fullObject BYTEA,
     sourceResourceRefTargetOid UUID,
-
     PRIMARY KEY (ownerOid, cid)
 )
-    INHERITS(m_container);
+    INHERITS (midpoint.m_container);
 
-CREATE INDEX midpoint.m_focus_identity_sourceResourceRefTargetOid_idx ON m_focus_identity (sourceResourceRefTargetOid);
+CREATE INDEX midpoint.m_focus_identity_sourceResourceRefTargetOid_idx
+    ON midpoint.m_focus_identity (sourceResourceRefTargetOid);
 
--- Represents GenericObjectType, see https://docs.evolveum.com/midpoint/reference/schema/generic-objects/
+-- GenericObjectType concrete table
 CREATE TABLE midpoint.m_generic_object (
-    oid UUID NOT NULL PRIMARY KEY REFERENCES m_object_oid(oid),
+    oid UUID NOT NULL PRIMARY KEY REFERENCES midpoint.m_object_oid(oid),
     objectType ObjectType GENERATED ALWAYS AS ('GENERIC_OBJECT') STORED
         CHECK (objectType = 'GENERIC_OBJECT')
 )
-    INHERITS (m_focus);
+    INHERITS (midpoint.m_focus);
 
-CREATE TRIGGER midpoint.m_generic_object_oid_insert_tr BEFORE INSERT ON m_generic_object
-    FOR EACH ROW EXECUTE FUNCTION insert_object_oid();
-CREATE TRIGGER midpoint.m_generic_object_update_tr BEFORE UPDATE ON m_generic_object
-    FOR EACH ROW EXECUTE FUNCTION before_update_object();
-CREATE TRIGGER midpoint.m_generic_object_oid_delete_tr AFTER DELETE ON m_generic_object
-    FOR EACH ROW EXECUTE FUNCTION delete_object_oid();
+-- Triggers for object lifecycle
+CREATE TRIGGER m_generic_object_oid_insert_tr
+    BEFORE INSERT ON midpoint.m_generic_object
+    FOR EACH ROW EXECUTE FUNCTION midpoint.insert_object_oid();
 
-CREATE INDEX midpoint.m_generic_object_nameOrig_idx ON m_generic_object (nameOrig);
-CREATE UNIQUE midpoint.INDEX m_generic_object_nameNorm_key ON m_generic_object (nameNorm);
-CREATE INDEX midpoint.m_generic_object_subtypes_idx ON m_generic_object USING gin(subtypes);
-CREATE INDEX midpoint.m_generic_object_validFrom_idx ON m_generic_object (validFrom);
-CREATE INDEX midpoint.m_generic_object_validTo_idx ON m_generic_object (validTo);
+CREATE TRIGGER m_generic_object_update_tr
+    BEFORE UPDATE ON midpoint.m_generic_object
+    FOR EACH ROW EXECUTE FUNCTION midpoint.before_update_object();
+
+CREATE TRIGGER m_generic_object_oid_delete_tr
+    AFTER DELETE ON midpoint.m_generic_object
+    FOR EACH ROW EXECUTE FUNCTION midpoint.delete_object_oid();
+
+-- Indexes for m_generic_object
+CREATE INDEX midpoint.m_generic_object_nameOrig_idx
+    ON midpoint.m_generic_object (nameOrig);
+
+CREATE UNIQUE INDEX m_generic_object_nameNorm_key
+    ON midpoint.m_generic_object (nameNorm);
+
+CREATE INDEX midpoint.m_generic_object_subtypes_idx
+    ON midpoint.m_generic_object USING gin(subtypes);
+
+CREATE INDEX midpoint.m_generic_object_validFrom_idx
+    ON midpoint.m_generic_object (validFrom);
+
+CREATE INDEX midpoint.m_generic_object_validTo_idx
+    ON midpoint.m_generic_object (validTo);
+
 CREATE INDEX midpoint.m_generic_object_fullTextInfo_idx
-    ON m_generic_object USING gin(fullTextInfo gin_trgm_ops);
-CREATE INDEX midpoint.m_generic_object_createTimestamp_idx ON m_generic_object (createTimestamp);
-CREATE INDEX midpoint.m_generic_object_modifyTimestamp_idx ON m_generic_object (modifyTimestamp);
--- endregion
+    ON midpoint.m_generic_object USING gin(fullTextInfo gin_trgm_ops);
+
+CREATE INDEX midpoint.m_generic_object_createTimestamp_idx
+    ON midpoint.m_generic_object (createTimestamp);
+
+CREATE INDEX midpoint.m_generic_object_modifyTimestamp_idx
+    ON midpoint.m_generic_object (modifyTimestamp);
+
 -----------------------------------------------------------------------------------------------------------------------------------------
 -- region USER related tables
 -- Represents UserType, see https://docs.evolveum.com/midpoint/architecture/archive/data-model/midpoint-common-schema/usertype/
