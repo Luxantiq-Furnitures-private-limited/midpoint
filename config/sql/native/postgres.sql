@@ -32,9 +32,9 @@
 -- drop schema current_user cascade;
 CREATE SCHEMA IF NOT EXISTS AUTHORIZATION midpoint;
 
-CREATE EXTENSION IF NOT EXISTS intarray; -- support for indexing INTEGER[] columns
-CREATE EXTENSION IF NOT EXISTS pg_trgm; -- support for trigram indexes
-CREATE EXTENSION IF NOT EXISTS fuzzystrmatch; -- fuzzy string match (levenshtein, etc.)
+CREATE EXTENSION IF NOT EXISTS intarray WITH SCHEMA midpoint;
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA midpoint;
+CREATE EXTENSION IF NOT EXISTS fuzzystrmatch WITH SCHEMA midpoint;
 
 -- region custom enum types
 -- Some enums are from schema, some are only defined in repo-sqale.
