@@ -41,7 +41,7 @@ CREATE EXTENSION IF NOT EXISTS fuzzystrmatch WITH SCHEMA midpoint;
 -- All Java enum types must be registered in SqaleRepoContext constructor.
 
 -- First purely repo-sqale enums (these have M prefix in Java, the rest of the name is the same):
-CREATE TYPE ContainerType AS ENUM (
+CREATE TYPE midpoint.ContainerType AS ENUM (
     'ACCESS_CERTIFICATION_CASE',
     'ACCESS_CERTIFICATION_WORK_ITEM',
     'AFFECTED_OBJECTS',
@@ -58,7 +58,7 @@ CREATE TYPE ContainerType AS ENUM (
     'TRIGGER');
 
 -- NOTE: Keep in sync with the same enum in postgres-new-audit.sql!
-CREATE TYPE ObjectType AS ENUM (
+CREATE TYPE midpoint.ObjectType AS ENUM (
     'ABSTRACT_ROLE',
     'ACCESS_CERTIFICATION_CAMPAIGN',
     'ACCESS_CERTIFICATION_DEFINITION',
@@ -99,7 +99,7 @@ CREATE TYPE ObjectType AS ENUM (
     'USER',
     'VALUE_POLICY');
 
-CREATE TYPE ReferenceType AS ENUM (
+CREATE TYPE midpoint.ReferenceType AS ENUM (
     'ARCHETYPE',
     'ASSIGNMENT_CREATE_APPROVER',
     'ASSIGNMENT_MODIFY_APPROVER',
@@ -121,66 +121,67 @@ CREATE TYPE ReferenceType AS ENUM (
     'ROLE_MEMBERSHIP',
     'TASK_AFFECTED_OBJECT');
 
-CREATE TYPE ExtItemHolderType AS ENUM (
+CREATE TYPE midpoint.ExtItemHolderType AS ENUM (
     'EXTENSION',
     'ATTRIBUTES');
 
-CREATE TYPE ExtItemCardinality AS ENUM (
+CREATE TYPE midpoint.ExtItemCardinality AS ENUM (
     'SCALAR',
     'ARRAY');
 
 -- Schema based enums have the same name like their enum classes (I like the Type suffix here):
-CREATE TYPE AccessCertificationCampaignStateType AS ENUM (
+CREATE TYPE midpoint.AccessCertificationCampaignStateType AS ENUM (
     'CREATED', 'IN_REVIEW_STAGE', 'REVIEW_STAGE_DONE', 'IN_REMEDIATION', 'CLOSED');
 
-CREATE TYPE ActivationStatusType AS ENUM ('ENABLED', 'DISABLED', 'ARCHIVED');
+CREATE TYPE midpoint.ActivationStatusType AS ENUM ('ENABLED', 'DISABLED', 'ARCHIVED');
 
-CREATE TYPE AdministrativeAvailabilityStatusType AS ENUM ('MAINTENANCE', 'OPERATIONAL');
+CREATE TYPE midpoint.AdministrativeAvailabilityStatusType AS ENUM ('MAINTENANCE', 'OPERATIONAL');
 
-CREATE TYPE AvailabilityStatusType AS ENUM ('DOWN', 'UP', 'BROKEN');
+CREATE TYPE midpoint.AvailabilityStatusType AS ENUM ('DOWN', 'UP', 'BROKEN');
 
-CREATE TYPE CorrelationSituationType AS ENUM ('UNCERTAIN', 'EXISTING_OWNER', 'NO_OWNER', 'ERROR');
+CREATE TYPE midpoint.CorrelationSituationType AS ENUM ('UNCERTAIN', 'EXISTING_OWNER', 'NO_OWNER', 'ERROR');
 
-CREATE TYPE ExecutionModeType AS ENUM ('FULL', 'PREVIEW', 'SHADOW_MANAGEMENT_PREVIEW', 'DRY_RUN', 'NONE', 'BUCKET_ANALYSIS');
+CREATE TYPE midpoint.ExecutionModeType AS ENUM ('FULL', 'PREVIEW', 'SHADOW_MANAGEMENT_PREVIEW', 'DRY_RUN', 'NONE', 'BUCKET_ANALYSIS');
 
-CREATE TYPE LockoutStatusType AS ENUM ('NORMAL', 'LOCKED');
+CREATE TYPE midpoint.LockoutStatusType AS ENUM ('NORMAL', 'LOCKED');
 
-CREATE TYPE NodeOperationalStateType AS ENUM ('UP', 'DOWN', 'STARTING');
+CREATE TYPE midpoint.NodeOperationalStateType AS ENUM ('UP', 'DOWN', 'STARTING');
 
-CREATE TYPE OperationExecutionRecordTypeType AS ENUM ('SIMPLE', 'COMPLEX');
+CREATE TYPE midpoint.OperationExecutionRecordTypeType AS ENUM ('SIMPLE', 'COMPLEX');
 
 -- NOTE: Keep in sync with the same enum in postgres-new-audit.sql!
 CREATE TYPE OperationResultStatusType AS ENUM ('SUCCESS', 'WARNING', 'PARTIAL_ERROR',
     'FATAL_ERROR', 'HANDLED_ERROR', 'NOT_APPLICABLE', 'IN_PROGRESS', 'UNKNOWN');
 
-CREATE TYPE OrientationType AS ENUM ('PORTRAIT', 'LANDSCAPE');
+CREATE TYPE midpoint.OrientationType AS ENUM ('PORTRAIT', 'LANDSCAPE');
 
-CREATE TYPE PredefinedConfigurationType AS ENUM ( 'PRODUCTION', 'DEVELOPMENT' );
+CREATE TYPE midpoint.PredefinedConfigurationType AS ENUM ( 'PRODUCTION', 'DEVELOPMENT' );
 
-CREATE TYPE ResourceAdministrativeStateType AS ENUM ('ENABLED', 'DISABLED');
+CREATE TYPE midpoint.ResourceAdministrativeStateType AS ENUM ('ENABLED', 'DISABLED');
 
-CREATE TYPE ShadowKindType AS ENUM ('ACCOUNT', 'ENTITLEMENT', 'GENERIC', 'ASSOCIATION', 'UNKNOWN');
+CREATE TYPE midpoint.ShadowKindType AS ENUM ('ACCOUNT', 'ENTITLEMENT', 'GENERIC', 'ASSOCIATION', 'UNKNOWN');
 
-CREATE TYPE SynchronizationSituationType AS ENUM (
+CREATE TYPE midpoint.SynchronizationSituationType AS ENUM (
     'DELETED', 'DISPUTED', 'LINKED', 'UNLINKED', 'UNMATCHED');
 
-CREATE TYPE TaskAutoScalingModeType AS ENUM ('DISABLED', 'DEFAULT');
+CREATE TYPE midpoint.TaskAutoScalingModeType AS ENUM ('DISABLED', 'DEFAULT');
 
-CREATE TYPE TaskBindingType AS ENUM ('LOOSE', 'TIGHT');
+CREATE TYPE midpoint.TaskBindingType AS ENUM ('LOOSE', 'TIGHT');
 
-CREATE TYPE TaskExecutionStateType AS ENUM ('RUNNING', 'RUNNABLE', 'WAITING', 'SUSPENDED', 'CLOSED');
+CREATE TYPE midpoint.TaskExecutionStateType AS ENUM ('RUNNING', 'RUNNABLE', 'WAITING', 'SUSPENDED', 'CLOSED');
 
-CREATE TYPE TaskRecurrenceType AS ENUM ('SINGLE', 'RECURRING');
+CREATE TYPE midpoint.TaskRecurrenceType AS ENUM ('SINGLE', 'RECURRING');
 
-CREATE TYPE TaskSchedulingStateType AS ENUM ('READY', 'WAITING', 'SUSPENDED', 'CLOSED');
+CREATE TYPE midpoint.TaskSchedulingStateType AS ENUM ('READY', 'WAITING', 'SUSPENDED', 'CLOSED');
 
-CREATE TYPE TaskWaitingReasonType AS ENUM ('OTHER_TASKS', 'OTHER');
+CREATE TYPE midpoint.TaskWaitingReasonType AS ENUM ('OTHER_TASKS', 'OTHER');
 
-CREATE TYPE ThreadStopActionType AS ENUM ('RESTART', 'RESCHEDULE', 'SUSPEND', 'CLOSE');
+CREATE TYPE midpoint.ThreadStopActionType AS ENUM ('RESTART', 'RESCHEDULE', 'SUSPEND', 'CLOSE');
 
-CREATE TYPE TimeIntervalStatusType AS ENUM ('BEFORE', 'IN', 'AFTER');
+CREATE TYPE midpoint.TimeIntervalStatusType AS ENUM ('BEFORE', 'IN', 'AFTER');
 -- endregion
-
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- region OID-pool table
 -- To support gen_random_uuid() pgcrypto extension must be enabled for the database (not for PG 13).
 -- select * from pg_available_extensions order by name;
